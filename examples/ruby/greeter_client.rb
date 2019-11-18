@@ -26,10 +26,30 @@ require 'grpc'
 require 'helloworld_services_pb'
 
 def main
-  stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
+  stub = Helloworld::Greeter::Stub.new(
+    'grpc.dounan.test:50050',
+    :this_channel_is_insecure,
+    # https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h
+    channel_args: {'grpc.lb_policy_name' => 'round_robin'}
+  )
+
   user = ARGV.size > 0 ?  ARGV[0] : 'world'
-  message = stub.say_hello(Helloworld::HelloRequest.new(name: user)).message
-  p "Greeting: #{message}"
+
+  result = ""
+  count = 1
+
+  while result == ""
+    begin
+      message = stub.say_hello(Helloworld::HelloRequest.new(name: user)).message
+      p "Greeting #{count}: #{message}"
+    rescue GRPC::BadStatus => e
+      p "Greeting #{count} failed: #{e}"
+    end
+
+    puts "Waiting for input..."
+    result = gets.strip
+    count += 1
+  end
 end
 
 main
