@@ -19,5 +19,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'grpc'
   s.add_dependency 'multi_json', '~> 1.13.1'
+  s.add_dependency "newrelic_rpm"
   s.add_development_dependency 'bundler', '>= 1.9'
 end

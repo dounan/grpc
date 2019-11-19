@@ -24,6 +24,7 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 require 'grpc'
 require 'helloworld_services_pb'
+require 'newrelic_rpm'
 
 # GreeterServer is simple server that implements the Helloworld Greeter server.
 class GreeterServer < Helloworld::Greeter::Service
@@ -37,13 +38,29 @@ end
 # main starts an RpcServer that receives requests to GreeterServer at the sample
 # server port.
 def main
-  s = GRPC::RpcServer.new
+  s = GRPC::RpcServer.new(interceptors: [NewRelicInterceptor.new])
   s.add_http2_port('0.0.0.0:' + ENV['PORT'], :this_port_is_insecure)
   s.handle(GreeterServer)
   # Runs the server with SIGHUP, SIGINT and SIGQUIT signal handlers to
   #   gracefully shutdown.
   # User could also choose to run server via call to run_till_terminated
   s.run_till_terminated_or_interrupted([1, 'int', 'SIGQUIT'])
+end
+
+class NewRelicInterceptor < GRPC::ServerInterceptor
+  # Intercept a unary request response call
+  #
+  # @param [Object] request
+  # @param [GRPC::ActiveCall] call
+  # @param [Method] method
+  #
+  def request_response(request: nil, call: nil, method: nil)
+    # https://docs.newrelic.com/docs/agents/ruby-agent/api-guides/ruby-custom-instrumentation
+    # https://rubydoc.info/github/newrelic/rpm/NewRelic/Agent/Tracer/
+    NewRelic::Agent::Tracer.in_transaction(partial_name: "NewRelicInterceptor/#{method.owner}/#{method.name}", category: :web) do
+      yield
+    end
+  end
 end
 
 main
