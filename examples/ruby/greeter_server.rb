@@ -48,6 +48,7 @@ def main
 end
 
 class NewRelicInterceptor < GRPC::ServerInterceptor
+  include NewRelic::Agent::Instrumentation::ControllerInstrumentation
   # Intercept a unary request response call
   #
   # @param [Object] request
@@ -55,9 +56,8 @@ class NewRelicInterceptor < GRPC::ServerInterceptor
   # @param [Method] method
   #
   def request_response(request: nil, call: nil, method: nil)
-    # https://docs.newrelic.com/docs/agents/ruby-agent/api-guides/ruby-custom-instrumentation
-    # https://rubydoc.info/github/newrelic/rpm/NewRelic/Agent/Tracer/
-    NewRelic::Agent::Tracer.in_transaction(partial_name: "NewRelicInterceptor/#{method.owner}/#{method.name}", category: :web) do
+    # https://www.rubydoc.info/github/newrelic/rpm/NewRelic/Agent/Instrumentation/ControllerInstrumentation
+    perform_action_with_newrelic_trace(name: method.name, class_name: method.owner) do
       yield
     end
   end
