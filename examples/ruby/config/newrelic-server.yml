@@ -77,7 +77,7 @@ common: &default_settings
 
   # The name of the log file.
   # Default is newrelic_agent.log.
-  log_file_name: newrelic_agent.log
+  log_file_name: newrelic_agent_server.log
 
   # The log file directory.
   # Default is the logs directory in the newrelic.jar parent directory.

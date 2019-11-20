@@ -106,6 +106,24 @@ For example, the ruby example can be run with the following options
 GRPC_VERBOSITY=debug GRPC_TRACE=cares_resolver,glb bundle exec ruby greeter_client.rb
 ```
 
+# NewRelic
+
+## Ruby
+
+Start server
+
+```
+NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-server.yml PORT=50051 bundle exec ruby greeter_server.rb
+```
+
+Run client
+
+```
+NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.yml bundle exec ruby greeter_client.rb
+```
+
+# === Original README ===
+
 # Examples
 
 This directory contains code examples for all the C-based gRPC implementations: C++, Node.js, Python, Ruby, Objective-C, PHP, and C#. You can find examples and instructions specific to your

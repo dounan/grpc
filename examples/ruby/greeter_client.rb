@@ -24,14 +24,22 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 require 'grpc'
 require 'helloworld_services_pb'
+require 'newrelic_rpm'
 
 def main
+  # https://discuss.newrelic.com/t/custom-metrics-have-no-data-or-are-missing/74219/3
+  # https://github.com/newrelic/rpm/blob/418d9b854b4e65cddd9dbd10a4bc55cb4ceb5eb3/lib/new_relic/agent.rb#L353
+  # NewRelic::Agent.manual_start(sync_startup: true)
+  # The sync_startup solution doesn't work so...
+  sleep(5)
+
   stub = Helloworld::Greeter::Stub.new(
     # 'grpc.dounan.test:50050',
     'localhost:50051',
     :this_channel_is_insecure,
     # https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h
-    channel_args: {'grpc.lb_policy_name' => 'round_robin'}
+    channel_args: {'grpc.lb_policy_name' => 'round_robin'},
+    interceptors: [NewRelicInterceptor.new],
   )
 
   user = ARGV.size > 0 ?  ARGV[0] : 'world'
@@ -50,6 +58,26 @@ def main
     puts "Waiting for input..."
     result = gets.strip
     count += 1
+  end
+end
+
+class NewRelicInterceptor < GRPC::ClientInterceptor
+
+  # @param [Object] request
+  # @param [GRPC::ActiveCall] call
+  # @param [Method] method
+  # @param [Hash] metadata
+  def request_response(request: nil, call: nil, method: nil, metadata: nil)
+    # https://docs.newrelic.com/docs/agents/ruby-agent/api-guides/ruby-custom-instrumentation
+    # https://rubydoc.info/github/newrelic/rpm/NewRelic/Agent/Tracer/
+    NewRelic::Agent::Tracer.in_transaction(partial_name: "NewRelicInterceptor/#{method}", category: :web) do
+      begin
+        yield
+      rescue GRPC::BadStatus => e
+        NewRelic::Agent.add_custom_attributes({ grpc_response_status: e.code })
+        raise
+      end
+    end
   end
 end
 
