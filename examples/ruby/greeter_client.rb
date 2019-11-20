@@ -55,7 +55,7 @@ def main
       p "Greeting #{count} failed: #{e}"
     end
 
-    puts "Waiting for input..."
+    puts "Waiting for user input..."
     result = gets.strip
     count += 1
   end

@@ -31,6 +31,11 @@ class GreeterServer < Helloworld::Greeter::Service
   # say_hello implements the SayHello rpc method.
   def say_hello(hello_req, _unused_call)
     puts "Received say_hello: #{hello_req}"
+
+    # Wait for user input before returning
+    puts "Waiting for user input..."
+    gets
+
     Helloworld::HelloReply.new(message: "Hello #{hello_req.name}")
   end
 end
@@ -38,13 +43,20 @@ end
 # main starts an RpcServer that receives requests to GreeterServer at the sample
 # server port.
 def main
-  s = GRPC::RpcServer.new(interceptors: [NewRelicInterceptor.new])
+  s = GRPC::RpcServer.new(
+    interceptors: [NewRelicInterceptor.new],
+
+    # Amount of time to wait before cancelling RPCs during graceful shutdown
+    # https://www.rubydoc.info/gems/grpc/GRPC/RpcServer#initialize-instance_method
+    poll_period: 30,
+  )
+
   s.add_http2_port('0.0.0.0:' + ENV['PORT'], :this_port_is_insecure)
   s.handle(GreeterServer)
   # Runs the server with SIGHUP, SIGINT and SIGQUIT signal handlers to
   #   gracefully shutdown.
   # User could also choose to run server via call to run_till_terminated
-  s.run_till_terminated_or_interrupted([1, 'int', 'SIGQUIT'])
+  s.run_till_terminated_or_interrupted([1, 'int', 'SIGQUIT', 'SIGTERM'])
 end
 
 class NewRelicInterceptor < GRPC::ServerInterceptor

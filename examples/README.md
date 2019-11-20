@@ -1,5 +1,17 @@
 # Testing load balancing
 
+## Takeaways
+
+- Need to explicitly enable client side load balancing.
+  - Ruby: When creating client stub `channel_args: {'grpc.lb_policy_name' => 'round_robin'}`
+  - Java: When building the channel `.defaultLoadBalancingPolicy("round_robin")`
+- gRPC will handle broken tcp connections and [retries](https://github.com/grpc/proposal/blob/master/A6-client-retries.md) under the hood
+- Without client load balancing
+  - gRPC will make a tcp connection to only one of the server IPs
+  - When that connection is broken, gRPC will try to connect to another server IP
+- With round robin client load balancing ([grpc.lb_policy_name="round_robin"](https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h))
+  - gRPC will connect to all server IPs
+
 ## Setup
 
 Create a new file `/etc/dounan_hosts` with
@@ -83,19 +95,6 @@ Start the client. Hit `ENTER` to send another request. Type any character and hi
 GRPC_VERBOSITY=debug GRPC_TRACE=cares_resolver,glb bundle exec ruby greeter_client.rb
 ```
 
-## Learnings
-
-- gRPC will handle broken tcp connections and [retries](https://github.com/grpc/proposal/blob/master/A6-client-retries.md) under the hood
-
-### Without client load balancing
-
-- gRPC will make a tcp connection to only one of the server IPs
-- When that connection is broken, gRPC will try to connect to another server IP
-
-### With round robin client load balancing ([grpc.lb_policy_name="round_robin"](https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h))
-
-- gRPC will connect to all server IPs
-
 # Misc
 
 When running the client/server, use `GRPC_VERBOSITY` and `GRPC_TRACE` for extra debug info. See [docs](https://github.com/grpc/grpc/blob/master/doc/environment_variables.md)
@@ -105,6 +104,20 @@ For example, the ruby example can be run with the following options
 ```
 GRPC_VERBOSITY=debug GRPC_TRACE=cares_resolver,glb bundle exec ruby greeter_client.rb
 ```
+
+# gRPC Server Graceful Shutdown
+
+Make Cleanup all the things from the load balancing test and point the client to `localhost`
+
+## Takeaways
+
+- Ruby server can be run with `run_till_terminated_or_interrupted` that listens for the passed in signals.
+  - If a signal is caught, it starts to gracefully shut down the server
+  - During graceful shutdown, new requests will be rejected with code 14), and existing requests are allowed to finish.
+  - Make sure to set a reasonable `poll_period` when initializing the server (default 1s)
+    - `poll_period` is the amount of time to wait before cancelling RPCs during graceful shutdown.
+
+## Ruby
 
 # NewRelic
 
