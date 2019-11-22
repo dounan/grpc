@@ -135,6 +135,30 @@ Run client
 NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.yml bundle exec ruby greeter_client.rb
 ```
 
+# NGINX when shutting down container with SIGTERM
+
+## Takeaways
+
+- NGINX does a fast shutdown on SIGTERM and does not gracefully shutdown existing gRPC requests
+
+## Ruby
+
+Build the docker file
+
+```
+docker build -t grpc/examples/ruby/greeter_server -f server.Dockerfile .
+```
+
+Run a server at port 50051
+
+```
+docker run -p 50051:3000 grpc/examples/ruby/greeter_server
+```
+
+Run the client (point to port 50051)
+
+Find the docker container with `docker ps` and stop it with `docker stop` which sends a SIGTERM (same as ECS).
+
 # === Original README ===
 
 # Examples

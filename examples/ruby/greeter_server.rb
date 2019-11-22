@@ -32,9 +32,11 @@ class GreeterServer < Helloworld::Greeter::Service
   def say_hello(hello_req, _unused_call)
     puts "Received say_hello: #{hello_req}"
 
-    # Wait for user input before returning
-    puts "Waiting for user input..."
-    gets
+    # # Wait for user input before returning
+    # puts "Waiting for user input..."
+    # gets
+
+    sleep 60
 
     Helloworld::HelloReply.new(message: "Hello #{hello_req.name}")
   end

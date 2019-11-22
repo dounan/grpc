@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /home/app/greeter_server
+PORT=50061 bundle exec ruby greeter_server.rb
