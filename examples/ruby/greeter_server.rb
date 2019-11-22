@@ -63,6 +63,26 @@ def main
   # User could also choose to run server via call to run_till_terminated
   s.run_till_terminated_or_interrupted([1, 'int', 'SIGQUIT', 'term'])
 
+  #############################################################################
+  ## Testing out whether or not `exec` is required in our service `run` file.
+  ## Run this code instead of the gRPC server
+
+  # interrupted = false
+  # Signal.trap("INT") do
+  #   interrupted = true
+  # end
+  # Signal.trap("QUIT") do
+  #   interrupted = true
+  # end
+  # Signal.trap("TERM") do
+  #   interrupted = true
+  # end
+  # while not interrupted
+  #   $stderr.puts "Hello from process #{Process.pid}"
+  #   sleep 1
+  # end
+  #############################################################################
+
   $stderr.puts "Stopped greeter server at #{Time.now.inspect}"
 end
 

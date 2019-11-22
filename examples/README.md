@@ -160,7 +160,6 @@ NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.
 - Can customize the control of [runsv](http://smarden.org/runit/runsv.8.html) that is used by `my_init` to turn the TERM signal into a SIGQUIT signal for NGINX to allow it to gracefully shutdown.
   - Otherwise, if NGINX receives a SIGTERM, it will do a fast shutdown on SIGTERM and does not gracefully shutdown existing gRPC requests
 - For ECS, we should remember to configure the docker stop graceperiod ([StopTimeout](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-containerdefinitions.html#cfn-ecs-taskdefinition-containerdefinition-stoptimeout)) to be the same or slightly longer than `KILL_PROCESS_TIMEOUT`
-- The `run` script should start the daemon with `exec ...`, otherwise there is a risk of duplicate processes when calling.
 
 ## Ruby
 
@@ -179,6 +178,47 @@ docker run -p 50051:3000 -e GRPC_PORT=50061 -e KILL_PROCESS_TIMEOUT=300 -e HELLO
 Run the client (point to port 50051)
 
 Find the docker container with `docker ps` and stop it with `docker stop --time 300 __container_id__` which sends a SIGTERM (same as ECS).
+
+# my_init run script with exec
+
+## Takeaways
+
+- The `run` script should start the daemon with `exec ...`, otherwise the process doesn't get shutdown properly by `sv force-stop`
+- The negative one process id in the [my_init](https://github.com/phusion/baseimage-docker/blob/master/image/bin/my_init) python code sends that command to all child processes.
+- Without exec, sv cannot properly shutdown the process, which means that our ruby code would not get the SIGTERM as a part of the call to sv force-stop. However, my_init has its own custom logic to kill all child processes with SIGTERM then SIGKILL (https://github.com/phusion/baseimage-docker/blob/master/image/bin/my_init#L226).
+  - So without exec, NGINX will gracefully shutdown on sv force-stop while the gRPC server continues going. Then whenever NGINX has shutdown, my_init script will then stop all child processes which will shutdown the gRPC server.
+  - With exec, both NGINX and our gRPC server will gracefully shutdown at the same time, and the gRPC server will have been stopped by the time my_init tries to stop all child processes.
+  - The end behavior is the same, but without exec we are relying on the code of my_init instead of supervisor
+
+## Ruby
+
+Remove the first `exec` from `exec bundle exec ruby greeter_server.rb` in the greeter_server service `run` file
+
+Comment out the `s.run_till_terminated_or_interrupted` line and uncomment the block of code for `exec` testing.
+
+Build the docker image and run it the same way as the NGINX graceful shutdown test above. You should see the line "Hello from process .." being printed.
+
+Start a bash terminal for the running docker container
+
+```
+docker exec -it __container_id__ /bin/bash
+```
+
+Tell supervisor to shutdown the greeter_server service
+
+```
+/usr/bin/sv force-stop /etc/service/greeter_server
+```
+
+Notice that the service is stopped "successfully", but the "Hello..." lines are still being printed.
+
+Tell supervisor to start the greeter_server service
+
+```
+/usr/bin/sv start /etc/service/greeter_server
+```
+
+Notice that now there are two processes outputing the "Hello..." lines.
 
 # === Original README ===
 
