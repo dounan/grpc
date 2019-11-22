@@ -82,11 +82,11 @@ sudo brew services stop dnsmasq
 Start two servers
 
 ```
-PORT=50051 bundle exec ruby greeter_server.rb
+GRPC_PORT=50051 bundle exec ruby greeter_server.rb
 ```
 
 ```
-PORT=50052 bundle exec ruby greeter_server.rb
+GRPC_PORT=50052 bundle exec ruby greeter_server.rb
 ```
 
 Start the client. Hit `ENTER` to send another request. Type any character and hit `ENTER` to quit
@@ -126,7 +126,7 @@ Make Cleanup all the things from the load balancing test and point the client to
 Start server
 
 ```
-NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-server.yml PORT=50051 bundle exec ruby greeter_server.rb
+NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-server.yml GRPC_PORT=50051 bundle exec ruby greeter_server.rb
 ```
 
 Run client
@@ -139,7 +139,28 @@ NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.
 
 ## Takeaways
 
-- NGINX does a fast shutdown on SIGTERM and does not gracefully shutdown existing gRPC requests
+- `my_init` is a python3 [wrapper script](https://github.com/phusion/baseimage-docker/blob/master/image/bin/my_init) around `runsvdir` and `sv` that can catch signals and gracefully shutdown the services that are run by `runsvdir`
+- `runsvdir` is a daemon that looks for changes in the configured `service` directory (`/etc/service`) and spins up a `runsv` process for each detected service
+- `runsv` manages a single service's lifecycle
+
+  - Notable features
+    - Restarts the child service process if it dies
+    - Accepts commands to stop, start, restart, etc the service (see [the man page](http://smarden.org/runit/runsv.8.html))
+      - Commands are issued by writing the desired command character to a named pipe (file) at `/etc/service/__your_service__/supervise/control`
+      - Command behavior can be customized by including a script named the same as the command you are overriding in `/etc/service/__your_service__/control/`
+      - We are interested in overriding the SIGTERM behavior for nginx, so we have the script `/etc/service/nginx/control/t`
+
+- `sv` is a command line tool that makes it easier to interact with the `runsv` processes
+
+  - Notable features (see [the man page](http://smarden.org/runit/sv.8.html) for more)
+    - Has a `force-stop` command that sends SIGTERM to the service, then kill it after some timeout (can be configured via the `-w` flag)
+
+- `my_init` uses `sv force-stop -w KILL_PROCESS_TIMEOUT /etc/service/*` to gracefully shutdown the services.
+  - `KILL_PROCESS_TIMEOUT` is an env variable that can be customized (we should set it to something like 30 or 60 seconds)
+- Can customize the control of [runsv](http://smarden.org/runit/runsv.8.html) that is used by `my_init` to turn the TERM signal into a SIGQUIT signal for NGINX to allow it to gracefully shutdown.
+  - Otherwise, if NGINX receives a SIGTERM, it will do a fast shutdown on SIGTERM and does not gracefully shutdown existing gRPC requests
+- For ECS, we should remember to configure the docker stop graceperiod ([StopTimeout](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-containerdefinitions.html#cfn-ecs-taskdefinition-containerdefinition-stoptimeout)) to be the same or slightly longer than `KILL_PROCESS_TIMEOUT`
+- The `run` script should start the daemon with `exec ...`, otherwise there is a risk of duplicate processes when calling.
 
 ## Ruby
 
@@ -152,12 +173,12 @@ docker build -t grpc/examples/ruby/greeter_server -f server.Dockerfile .
 Run a server at port 50051
 
 ```
-docker run -p 50051:3000 grpc/examples/ruby/greeter_server
+docker run -p 50051:3000 -e GRPC_PORT=50061 -e KILL_PROCESS_TIMEOUT=300 -e HELLO_SLEEP=20 grpc/examples/ruby/greeter_server
 ```
 
 Run the client (point to port 50051)
 
-Find the docker container with `docker ps` and stop it with `docker stop` which sends a SIGTERM (same as ECS).
+Find the docker container with `docker ps` and stop it with `docker stop --time 300 __container_id__` which sends a SIGTERM (same as ECS).
 
 # === Original README ===
 

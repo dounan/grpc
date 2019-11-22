@@ -31,7 +31,7 @@ def main
   # https://github.com/newrelic/rpm/blob/418d9b854b4e65cddd9dbd10a4bc55cb4ceb5eb3/lib/new_relic/agent.rb#L353
   # NewRelic::Agent.manual_start(sync_startup: true)
   # The sync_startup solution doesn't work so...
-  sleep(5)
+  # sleep(5)
 
   stub = Helloworld::Greeter::Stub.new(
     # 'grpc.dounan.test:50050',

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Send QUIT command so NGINX can gracefully shutdown.
+printf q >/etc/service/nginx/supervise/control
