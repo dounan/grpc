@@ -38,7 +38,7 @@ class GreeterServer < Helloworld::Greeter::Service
 
     sleep (ENV['HELLO_SLEEP'] || "0").to_i
 
-    Helloworld::HelloReply.new(message: "Hello #{hello_req.name}")
+    Helloworld::HelloReply.new(message: "Hello #{hello_req.name} from process #{Process.pid}")
   end
 end
 

@@ -39,6 +39,8 @@ sudo brew services start dnsmasq
 
 Change your DNS server in Network Preferences to `127.0.0.1`
 
+Make sure you're _not_ connected the VPN
+
 Ensure that dnsmasq and the hosts file is configured correctly
 
 ```
@@ -137,7 +139,7 @@ NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.
 
 # NGINX when shutting down container with SIGTERM
 
-## Takeaways
+## Background Knowledge
 
 - `my_init` is a python3 [wrapper script](https://github.com/phusion/baseimage-docker/blob/master/image/bin/my_init) around `runsvdir` and `sv` that can catch signals and gracefully shutdown the services that are run by `runsvdir`
 - `runsvdir` is a daemon that looks for changes in the configured `service` directory (`/etc/service`) and spins up a `runsv` process for each detected service
@@ -159,6 +161,16 @@ NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.
   - `KILL_PROCESS_TIMEOUT` is an env variable that can be customized (we should set it to something like 30 or 60 seconds)
 - Can customize the control of [runsv](http://smarden.org/runit/runsv.8.html) that is used by `my_init` to turn the TERM signal into a SIGQUIT signal for NGINX to allow it to gracefully shutdown.
   - Otherwise, if NGINX receives a SIGTERM, it will do a fast shutdown on SIGTERM and does not gracefully shutdown existing gRPC requests
+
+## Takeaways
+
+- Possible to configure `runsv` to gracefully shutdown NGINX (see `server_infra/docker/base/build/service/nginx/control/t`)
+- ⚠️ NGINX graceful shutdown still results in gRPC client errors
+  - During graceful shutdown, NGINX responds with TCP FIN-ACK for new connections (TCP SYN)
+  - However, gRPC server sends TCP RST for new connections during graceful shutdown
+  - gRPC client handles TCP FIN-ACK by immediately trying to reconnect without any backoff (https://grpc.io/blog/grpc_on_http2/)
+  - This causes a flood of TCP SYN packets as the gRPC client tries to re-establish a connection with that IP address
+  - This also causes `14:Socket closed` errors after NGINX has shutdown
 - For ECS, we should remember to configure the docker stop graceperiod ([StopTimeout](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-containerdefinitions.html#cfn-ecs-taskdefinition-containerdefinition-stoptimeout)) to be the same or slightly longer than `KILL_PROCESS_TIMEOUT`
 
 ## Ruby
