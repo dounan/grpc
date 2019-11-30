@@ -118,6 +118,8 @@ Make Cleanup all the things from the load balancing test and point the client to
   - During graceful shutdown, new requests will be rejected with code 14), and existing requests are allowed to finish.
   - Make sure to set a reasonable `poll_period` when initializing the server (default 1s)
     - `poll_period` is the amount of time to wait before cancelling RPCs during graceful shutdown.
+    - When `poll_period` expires, server will send `FIN` packet to client to initiate TCP connection termination.
+      - The client application code will receive a `14:Socket Closed` error
 
 ## Ruby
 
@@ -166,9 +168,9 @@ NEW_RELIC_LICENSE_KEY=__your_key__ NEW_RELIC_CONFIG_PATH=config/newrelic-client.
 
 - Possible to configure `runsv` to gracefully shutdown NGINX (see `server_infra/docker/base/build/service/nginx/control/t`)
 - ⚠️ NGINX graceful shutdown still results in gRPC client errors
-  - During graceful shutdown, NGINX responds with TCP FIN-ACK for new connections (TCP SYN)
+  - During graceful shutdown, NGINX responds with TCP FIN for new connections (TCP SYN)
   - However, gRPC server sends TCP RST for new connections during graceful shutdown
-  - gRPC client handles TCP FIN-ACK by immediately trying to reconnect without any backoff (https://grpc.io/blog/grpc_on_http2/)
+  - gRPC client handles TCP FIN by immediately trying to reconnect without any backoff (https://grpc.io/blog/grpc_on_http2/)
   - This causes a flood of TCP SYN packets as the gRPC client tries to re-establish a connection with that IP address
   - This also causes `14:Socket closed` errors after NGINX has shutdown
 - For ECS, we should remember to configure the docker stop graceperiod ([StopTimeout](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-containerdefinitions.html#cfn-ecs-taskdefinition-containerdefinition-stoptimeout)) to be the same or slightly longer than `KILL_PROCESS_TIMEOUT`
