@@ -33,10 +33,15 @@ def main
   # The sync_startup solution doesn't work so...
   # sleep(5)
 
+  ssl_cert = File.open("certs/server.crt").read
+  channel_credentials = GRPC::Core::ChannelCredentials.new(ssl_cert)
+
   stub = Helloworld::Greeter::Stub.new(
-    'grpc.dounan.test:50050',
-    # 'localhost:50051',
-    :this_channel_is_insecure,
+    # 'grpc.dounan.test:50050',
+    'localhost:50051',
+
+    ENV["SSL_ENABLED"] ? channel_credentials : :this_channel_is_insecure,
+
     # https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h
     channel_args: {'grpc.lb_policy_name' => 'round_robin'},
     interceptors: [NewRelicInterceptor.new],

@@ -234,6 +234,13 @@ Tell supervisor to start the greeter_server service
 
 Notice that now there are two processes outputing the "Hello..." lines.
 
+# TLS
+
+## Resources
+
+- https://github.com/codequest-eu/grpc-demo/blob/master/server/server.rb
+- https://github.com/grpc/grpc/blob/master/src/ruby/qps/client.rb
+
 # === Original README ===
 
 # Examples

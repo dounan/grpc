@@ -53,7 +53,22 @@ def main
     poll_period: 30,
   )
 
-  s.add_http2_port('0.0.0.0:' + (ENV['GRPC_PORT'] || "50051"), :this_port_is_insecure)
+  ssl_key = File.open("certs/server.key").read
+  ssl_cert = File.open("certs/server.crt").read
+  root_ca_cert = nil
+  force_client_authentication = false
+
+  server_credentials = GRPC::Core::ServerCredentials.new(
+    root_ca_cert,
+    [{private_key: ssl_key, cert_chain: ssl_cert}],
+    force_client_authentication,
+  )
+
+  s.add_http2_port(
+    '0.0.0.0:' + (ENV['GRPC_PORT'] || "50051"),
+
+    ENV["SSL_ENABLED"] ? server_credentials : :this_port_is_insecure,
+  )
   s.handle(GreeterServer)
 
   $stderr.puts "Starting greeter server...#{Time.now.inspect}"
