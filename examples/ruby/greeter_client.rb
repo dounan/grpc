@@ -37,22 +37,24 @@ def main
   channel_credentials = GRPC::Core::ChannelCredentials.new(ssl_cert)
 
   stub = Helloworld::Greeter::Stub.new(
-    # 'grpc.dounan.test:50050',
-    'localhost:50051',
-    # "0.tcp.ngrok.io:16268",
+    'grpc.dounan.test:50050',
+    # 'localhost:50051',
 
     ENV["SSL_ENABLED"] ? channel_credentials : :this_channel_is_insecure,
 
     # https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h
-    channel_args: {'grpc.lb_policy_name' => 'round_robin'},
+    channel_args: {
+      'grpc.lb_policy_name' => 'round_robin',
+      'grpc.dns_min_time_between_resolutions_ms' => 10000,
+    },
     interceptors: [NewRelicInterceptor.new],
   )
 
   name = ARGV.size > 0 ?  ARGV[0] : 'world'
 
   # Only one of these should be uncommented
-  parallel_requests_with_sigint(stub, name)
-  # user_input_controlled_requests(stub, name)
+  # parallel_requests_with_sigint(stub, name)
+  user_input_controlled_requests(stub, name)
 end
 
 def parallel_requests_with_sigint(stub, name)

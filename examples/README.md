@@ -292,6 +292,31 @@ Tell supervisor to start the greeter_server service
 
 Notice that now there are two processes outputing the "Hello..." lines.
 
+# DNS resolution
+
+## Takeaways
+
+- Configure _min_ time via [grpc.dns_min_time_between_resolutions_ms](https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h#L253)
+- DNS resolution occurs whenever a TCP connection fails (but still respecting grpc.dns_min_time_between_resolutions_ms)
+
+## Setup
+
+Start Wireshark on loopback interface `lo0` and set the following filter
+
+```
+dns.qry.type == 1 && dns.qry.name == "grpc.dounan.test"
+```
+
+## Ruby
+
+Set the `dns_min_time_between_resolutions_ms` to something like 5000 ms
+
+Start two servers and the client (with `user_input_controlled_requests` uncommented)
+
+Kill a server and watch the Wireshark output for when DNS resolution happens. Notice the exponential backoff
+
+Kill the other server and watch the Wireshark output
+
 # TLS
 
 ## Resources
