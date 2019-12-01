@@ -61,7 +61,7 @@ sudo pfctl -f /etc/pf.conf
 sudo pfctl -e
 ```
 
-## Cleanup
+## Teardown
 
 Disable pf
 
@@ -120,8 +120,66 @@ Make Cleanup all the things from the load balancing test and point the client to
     - `poll_period` is the amount of time to wait before cancelling RPCs during graceful shutdown.
     - When `poll_period` expires, server will send `FIN` packet to client to initiate TCP connection termination.
       - The client application code will receive a `14:Socket Closed` error
+- If the client sends a new RPC on the same TCP connection after the server sends a GOAWAY
+  - The server will just ignore the new RPC
+  - The client thinks the RPC is in progress and waits
+  - Once the server gracefully shuts down, the clients gets the `14:Socket Closed` error
 
-## Ruby
+## Edgecase where client sends an RCP on same TCP connection after server sends GOAWAY
+
+### Setup
+
+Create a dummy pipe with a 1 second delay
+
+```
+sudo dnctl pipe 1 config bw 1000Kbit/s delay 1000
+```
+
+Add the following line to `/etc/pf.conf` to send all TCP traffic through the dummy pipe
+
+```
+dummynet out proto tcp from any to any pipe 1
+```
+
+Load and enable packet filtering via the `pfctl` instructions above.
+
+### Ruby
+
+Ensure that `parallel_requests_with_sigint` is uncommented and the channel name is `localhost:50051`.
+
+Run the server
+
+```
+GRPC_PORT=50051 HELLO_SLEEP=10 bundle exec ruby greeter_server.rb
+```
+
+Get its process id
+
+```
+ps | grep ruby
+```
+
+Start recording the loopback interface `lo0` traffic in Wireshark.
+
+Run the client and pass in the server's process id
+
+```
+SERVER_PROCESS_ID=__server_process_id__ bundle exec ruby greeter_client.rb
+```
+
+When you see that the first request is received by the server, `CTRL+C` the client, which will send `SIGINT` the server and send a parallel request to the server.
+
+In Wireshark, you should see the server send a `GOAWAY` frame. Before that frame is ACK'd, the client should have sent another RPC request.
+
+### Teardown
+
+Remove the line that was added to `/etc/pf.conf` and disable packet filtering
+
+Delete the pipe
+
+```
+sudo dnctl pipe delete 1
+```
 
 # NewRelic
 

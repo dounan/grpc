@@ -30,7 +30,7 @@ require 'newrelic_rpm'
 class GreeterServer < Helloworld::Greeter::Service
   # say_hello implements the SayHello rpc method.
   def say_hello(hello_req, _unused_call)
-    $stderr.puts "Received say_hello: #{hello_req}"
+    $stderr.puts "#{Time.now} Received say_hello: #{hello_req}"
 
     # # Wait for user input before returning
     # puts "Waiting for user input..."
@@ -38,6 +38,7 @@ class GreeterServer < Helloworld::Greeter::Service
 
     sleep (ENV['HELLO_SLEEP'] || "0").to_i
 
+    $stderr.puts "#{Time.now} Replying to say_hello"
     Helloworld::HelloReply.new(message: "Hello #{hello_req.name} from process #{Process.pid}")
   end
 end

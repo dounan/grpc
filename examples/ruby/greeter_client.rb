@@ -39,6 +39,7 @@ def main
   stub = Helloworld::Greeter::Stub.new(
     # 'grpc.dounan.test:50050',
     'localhost:50051',
+    # "0.tcp.ngrok.io:16268",
 
     ENV["SSL_ENABLED"] ? channel_credentials : :this_channel_is_insecure,
 
@@ -47,23 +48,54 @@ def main
     interceptors: [NewRelicInterceptor.new],
   )
 
-  user = ARGV.size > 0 ?  ARGV[0] : 'world'
+  name = ARGV.size > 0 ?  ARGV[0] : 'world'
 
+  # Only one of these should be uncommented
+  parallel_requests_with_sigint(stub, name)
+  # user_input_controlled_requests(stub, name)
+end
+
+def parallel_requests_with_sigint(stub, name)
+  t1 = Thread.new do
+    say_hello(stub, name, "Initial")
+  end
+
+  trapped = false
+
+  Signal.trap("INT") do
+    Thread.new do
+      system("kill -2 #{ENV["SERVER_PROCESS_ID"]}")
+      sleep 0.2
+      say_hello(stub, name, "Parallel")
+    end.join
+    trapped = true
+  end
+
+  while !trapped
+  end
+
+  t1.join
+end
+
+def user_input_controlled_requests(stub, name)
   result = ""
   count = 1
 
   while result == ""
-    begin
-      p "Calling say_hello..."
-      message = stub.say_hello(Helloworld::HelloRequest.new(name: user)).message
-      p "Greeting #{count}: #{message}"
-    rescue GRPC::BadStatus => e
-      p "Greeting #{count} failed: #{e}"
-    end
+    say_hello(stub, name, count)
+    puts "Waiting for user input..."
+    result = gets.strip
+    count += 1
+  end
+end
 
-    # puts "Waiting for user input..."
-    # result = gets.strip
-    # count += 1
+def say_hello(stub, name, label)
+  begin
+    p "[#{label}] Calling say_hello..."
+    message = stub.say_hello(Helloworld::HelloRequest.new(name: name)).message
+    p "[#{label}] Greeting: #{message}"
+  rescue GRPC::BadStatus => e
+    p "[#{label}] Greeting failed: #{e}"
   end
 end
 
