@@ -37,8 +37,8 @@ def main
   channel_credentials = GRPC::Core::ChannelCredentials.new(ssl_cert)
 
   stub = Helloworld::Greeter::Stub.new(
-    'grpc.dounan.test:50050',
-    # 'localhost:50051',
+    # 'grpc.dounan.test:50050',
+    'localhost:50051',
 
     ENV["SSL_ENABLED"] ? channel_credentials : :this_channel_is_insecure,
 
@@ -94,7 +94,7 @@ end
 def say_hello(stub, name, label)
   begin
     p "[#{label}] Calling say_hello..."
-    message = stub.say_hello(Helloworld::HelloRequest.new(name: name)).message
+    message = stub.say_hello(Helloworld::HelloRequest.new(name: name), deadline: Time.now + 0.1).message
     p "[#{label}] Greeting: #{message}"
   rescue GRPC::BadStatus => e
     p "[#{label}] Greeting failed: #{e}"
