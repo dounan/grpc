@@ -91,6 +91,8 @@ GRPC_PORT=50051 bundle exec ruby greeter_server.rb
 GRPC_PORT=50052 bundle exec ruby greeter_server.rb
 ```
 
+Set the url of the client to `grpc.dounan.test:50050`.
+
 Start the client. Hit `ENTER` to send another request. Type any character and hit `ENTER` to quit
 
 ```
@@ -260,7 +262,7 @@ Find the docker container with `docker ps` and stop it with `docker stop --time 
 - Without exec, sv cannot properly shutdown the process, which means that our ruby code would not get the SIGTERM as a part of the call to sv force-stop. However, my_init has its own custom logic to kill all child processes with SIGTERM then SIGKILL (https://github.com/phusion/baseimage-docker/blob/master/image/bin/my_init#L226).
   - So without exec, NGINX will gracefully shutdown on sv force-stop while the gRPC server continues going. Then whenever NGINX has shutdown, my_init script will then stop all child processes which will shutdown the gRPC server.
   - With exec, both NGINX and our gRPC server will gracefully shutdown at the same time, and the gRPC server will have been stopped by the time my_init tries to stop all child processes.
-  - The end behavior is the same, but without exec we are relying on the code of my_init instead of supervisor
+  - The end behavior is the same, but without exec we are relying on the code of my_init instead of runit
 
 ## Ruby
 
@@ -276,7 +278,7 @@ Start a bash terminal for the running docker container
 docker exec -it __container_id__ /bin/bash
 ```
 
-Tell supervisor to shutdown the greeter_server service
+Tell runit to shutdown the greeter_server service
 
 ```
 /usr/bin/sv force-stop /etc/service/greeter_server
@@ -284,7 +286,7 @@ Tell supervisor to shutdown the greeter_server service
 
 Notice that the service is stopped "successfully", but the "Hello..." lines are still being printed.
 
-Tell supervisor to start the greeter_server service
+Tell runit to start the greeter_server service
 
 ```
 /usr/bin/sv start /etc/service/greeter_server
