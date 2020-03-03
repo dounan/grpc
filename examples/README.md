@@ -246,7 +246,7 @@ docker build -t grpc/examples/ruby/greeter_server -f server.Dockerfile .
 Run a server at port 50051
 
 ```
-docker run -p 50051:3000 -e GRPC_PORT=50061 -e KILL_PROCESS_TIMEOUT=300 -e HELLO_SLEEP=20 grpc/examples/ruby/greeter_server
+docker run -p 50051:3000 -e KILL_PROCESS_TIMEOUT=300 -e HELLO_SLEEP=20 grpc/examples/ruby/greeter_server
 ```
 
 Run the client (point to port 50051)
@@ -325,6 +325,18 @@ Kill the other server and watch the Wireshark output
 
 - https://github.com/codequest-eu/grpc-demo/blob/master/server/server.rb
 - https://github.com/grpc/grpc/blob/master/src/ruby/qps/client.rb
+
+# Envoy
+
+## Setup
+
+Same setup as testing NGINX above to build the docker container.
+
+Envoy runs on port 3001 instead of 3000.
+
+```
+docker run -p 50051:3001 -e KILL_PROCESS_TIMEOUT=300 -e HELLO_SLEEP=20 grpc/examples/ruby/greeter_server
+```
 
 # === Original README ===
 

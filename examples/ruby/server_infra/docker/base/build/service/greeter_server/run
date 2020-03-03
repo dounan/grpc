@@ -1,3 +1,4 @@
 #!/bin/bash
 cd /home/app/greeter_server
+export GRPC_PORT=50061
 exec bundle exec ruby greeter_server.rb

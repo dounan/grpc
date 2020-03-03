@@ -1,5 +1,9 @@
 FROM phusion/passenger-customizable:1.0.5
 
+# Install Envoy
+COPY --from=envoyproxy/envoy:v1.13.0 /usr/local/bin/envoy /usr/local/bin/envoy
+COPY server_infra/docker/base/build/conf/envoy/envoy.yaml /etc/envoy/envoy.yaml
+
 # Copy services
 COPY server_infra/docker/base/build/service /etc/service
 
@@ -16,6 +20,7 @@ WORKDIR /home/app/greeter_server
 
 COPY . .
 
+RUN gem update --system
 RUN gem install bundler
 RUN bundle config --global silence_root_warning 1
 RUN bundle install

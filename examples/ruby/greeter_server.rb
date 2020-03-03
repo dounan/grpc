@@ -52,6 +52,8 @@ def main
     # Amount of time to wait before cancelling RPCs during graceful shutdown
     # https://www.rubydoc.info/gems/grpc/GRPC/RpcServer#initialize-instance_method
     poll_period: 30,
+
+    pool_size: 1,
   )
 
   ssl_key = File.open("certs/server.key").read
@@ -65,14 +67,16 @@ def main
     force_client_authentication,
   )
 
+  url = '0.0.0.0:' + (ENV['GRPC_PORT'] || "50051")
+
   s.add_http2_port(
-    '0.0.0.0:' + (ENV['GRPC_PORT'] || "50051"),
+    url,
 
     ENV["SSL_ENABLED"] ? server_credentials : :this_port_is_insecure,
   )
   s.handle(GreeterServer)
 
-  $stderr.puts "Starting greeter server...#{Time.now.inspect}"
+  $stderr.puts "#{Time.now.inspect} Starting greeter server at #{url}"
 
   # Runs the server with SIGHUP, SIGINT and SIGQUIT signal handlers to
   #   gracefully shutdown.

@@ -1,0 +1,2 @@
+#!/bin/bash
+exec envoy -c /etc/envoy/envoy.yaml

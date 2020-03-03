@@ -36,16 +36,18 @@ def main
   ssl_cert = File.open("certs/server.crt").read
   channel_credentials = GRPC::Core::ChannelCredentials.new(ssl_cert)
 
-  stub = Helloworld::Greeter::Stub.new(
-    # 'grpc.dounan.test:50050',
-    'localhost:50051',
+  host = ENV["HOST"] || 'localhost:50051';
 
+  puts "host: #{host}"
+  stub = Helloworld::Greeter::Stub.new(
+    host,
     ENV["SSL_ENABLED"] ? channel_credentials : :this_channel_is_insecure,
 
     # https://github.com/grpc/grpc/blob/master/include/grpc/impl/codegen/grpc_types.h
     channel_args: {
       'grpc.lb_policy_name' => 'round_robin',
-      'grpc.dns_min_time_between_resolutions_ms' => 10000,
+      'grpc.dns_min_time_between_resolutions_ms' => 1000,
+      'grpc.dns_enable_srv_queries' => 1,
     },
     interceptors: [NewRelicInterceptor.new],
   )
@@ -84,9 +86,9 @@ def user_input_controlled_requests(stub, name)
   count = 1
 
   while result == ""
-    say_hello(stub, name, count)
     puts "Waiting for user input..."
     result = gets.strip
+    say_hello(stub, name, count)
     count += 1
   end
 end
@@ -94,7 +96,7 @@ end
 def say_hello(stub, name, label)
   begin
     p "[#{label}] Calling say_hello..."
-    message = stub.say_hello(Helloworld::HelloRequest.new(name: name), deadline: Time.now + 0.1).message
+    message = stub.say_hello(Helloworld::HelloRequest.new(name: name), deadline: Time.now + 100).message
     p "[#{label}] Greeting: #{message}"
   rescue GRPC::BadStatus => e
     p "[#{label}] Greeting failed: #{e}"
