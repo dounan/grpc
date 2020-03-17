@@ -19,6 +19,9 @@ static_resources:
                   - name: envoy.file_access_log
                     config:
                       path: "/proc/1/fd/1"
+                common_http_protocol_options:
+                  max_connection_duration:
+                    seconds: 120
                 route_config:
                   name: ingress_grpc_route
                   virtual_hosts:
@@ -33,6 +36,16 @@ static_resources:
                             cluster: local_server
                             timeout: 60s
                 http_filters:
+                  # - name: envoy.health_check
+                  #   typed_config:
+                  #     "@type": type.googleapis.com/envoy.config.filter.http.health_check.v2.HealthCheck
+                  #     pass_through_mode: false
+                  #     cluster_min_healthy_percentages:
+                  #       local_server:
+                  #         value: 100
+                  #     headers:
+                  #       - name: ":path"
+                  #         exact_match: "/health"
                   - name: envoy.router
                     typed_config: {}
   clusters:

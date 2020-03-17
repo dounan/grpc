@@ -47,7 +47,7 @@ def main
     channel_args: {
       'grpc.lb_policy_name' => 'round_robin',
       'grpc.dns_min_time_between_resolutions_ms' => 1000,
-      'grpc.dns_enable_srv_queries' => 1,
+      # 'grpc.dns_enable_srv_queries' => 1,
     },
     interceptors: [NewRelicInterceptor.new],
   )

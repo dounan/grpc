@@ -1,4 +1,10 @@
-FROM phusion/passenger-customizable:1.0.5
+FROM phusion/passenger-customizable:1.0.5 AS builder
+
+RUN gem update --system
+RUN gem install bundler
+RUN bundle config --global silence_root_warning 1
+
+FROM builder
 
 # Install Envoy
 COPY --from=envoyproxy/envoy:v1.13.0 /usr/local/bin/envoy /usr/local/bin/envoy
@@ -20,13 +26,7 @@ WORKDIR /home/app/greeter_server
 
 COPY . .
 
-RUN gem update --system
-RUN gem install bundler
-RUN bundle config --global silence_root_warning 1
 RUN bundle install
-
-# Configure my_init KILL grace period
-ENV KILL_PROCESS_TIMEOUT=300
 
 # LEAVE THIS COMMAND: it is used to start our monitoring/logging agents
 CMD ["/sbin/my_init"]
