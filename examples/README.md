@@ -19,6 +19,7 @@ Create a new file `/etc/dounan_hosts` with
 ```
 127.1.0.1 grpc.dounan.test
 127.1.0.2 grpc.dounan.test
+127.1.0.3 grpc.dounan.test
 ```
 
 ```
@@ -52,6 +53,7 @@ Add entries to `/etc/pf.conf` below the `rdr-anchor` line
 ```
 rdr on lo0 proto tcp from any to 127.1.0.1 port 50050 -> 127.0.0.1 port 50051
 rdr on lo0 proto tcp from any to 127.1.0.2 port 50050 -> 127.0.0.1 port 50052
+rdr on lo0 proto tcp from any to 127.1.0.3 port 50050 -> 127.0.0.1 port 50053
 ```
 
 Load the pf.conf file and enable pf
@@ -337,6 +339,40 @@ Envoy runs on port 3001 instead of 3000.
 ```
 docker run -p 50051:3001 -e KILL_PROCESS_TIMEOUT=300 -e HELLO_SLEEP=20 grpc/examples/ruby/greeter_server
 ```
+
+# Connections with stale hosts after DNS resolution
+
+## Takeaways
+
+- gRPC client will forget about the old hosts that are no longer in the DNS response **only** if it can establish a connection with one of the new hosts.
+  - If no connections can be made to the new hosts, it will continue using any valid hosts that it already has a connection to.
+  - If the connections to the old hosts are closed, the gRPC client will continue to try to establish a connection to both the old and the new hosts.
+
+## Ruby
+
+Setup DNS for `grpc.dounan.test` like above but comment out `127.1.0.3` from `/etc/dounan_hosts`.
+
+Spin up servers at ports 50051 and 50052 and start the client. Send a few requests to see it load balance between the two servers.
+
+Modify `/etc/dounan_hosts` and uncomment `127.1.0.3` and comment out all the other hosts.
+
+Restart `dnsmasq`.
+
+Kill **one** of the old hosts to trigger a DNS resolution.
+
+Send some requests and see that the requests still go to the other old host.
+
+Kill the other old host (no hosts are running at this time).
+
+Send some requests and see that they fail.
+
+Start one the **old** hosts.
+
+Send some requests and see that they still go to the old host.
+
+Start a new server at 50053 (the new host).
+
+Send some requests and see that requests only go to the new host.
 
 # === Original README ===
 
