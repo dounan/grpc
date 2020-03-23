@@ -1,0 +1,3 @@
+#!/bin/bash
+# Do nothing with SIGTERM to allow Envoy to drain requests
+exit 0
